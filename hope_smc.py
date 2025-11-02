@@ -35,7 +35,7 @@ PAIRS = {
     "EURUSD": "EURUSD=X",
     "GBPJPY": "GBPJPY=X",
     "USDJPY": "USDJPY=X",
-    "XAUUSD": "XAUUSD=X",
+    "XAUUSD": "GF=F",
     "GBPUSD": "GBPUSD=X"
 }
 
