@@ -1,0 +1,6 @@
+requests
+pandas
+numpy
+flask
+yfinance
+python-telegram-bot==13.15
