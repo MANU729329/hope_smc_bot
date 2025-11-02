@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-HOPE_SMC_AUTO_BOT v1 (Test Data Version)
+HOPE_SMC_AUTO_BOT v2 (Live Market Data Version)
 Author: Manu
-Description: Simulated Smart Money Concepts (HOPE) Signal Bot that sends A+ setups to Telegram
+Description: Real-time Smart Money Concepts (HOPE) Signal Bot with live data + Telegram alerts.
 """
 
 import time
 import threading
-import random
 import pandas as pd
+import yfinance as yf
 import requests
 from flask import Flask
 from datetime import datetime
 
 # ==============================
-# 🔹 Telegram Bot Configuration
+# 🔹 Telegram Configuration
 # ==============================
-BOT_TOKEN = 8376149890 
+BOT_TOKEN = 8376149890
 CHAT_ID = 1609197089
 
 # ==============================
@@ -26,97 +26,118 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "🚀 HOPE SMC Bot is running successfully on Render (Test Mode)."
+    return "🚀 HOPE SMC Bot is live and pulling real market data!"
 
 # ==============================
-# 🔹 Simulated Market Data
+# 🔹 Forex Pair Mapping (Yahoo Tickers)
 # ==============================
-PAIRS = ["EURUSD", "GBPJPY", "USDJPY", "XAUUSD", "GBPUSD"]
+PAIRS = {
+    "EURUSD": "EURUSD=X",
+    "GBPJPY": "GBPJPY=X",
+    "USDJPY": "USDJPY=X",
+    "XAUUSD": "XAUUSD=X",
+    "GBPUSD": "GBPUSD=X"
+}
 
-def simulate_market_data():
+# ==============================
+# 🔹 Fetch Live Market Data
+# ==============================
+def get_live_data():
     data = []
-    for pair in PAIRS:
-        price = random.uniform(1.0, 2000.0)
-        rsi = random.randint(10, 90)
-        sweep = random.choice([True, False])
-        bos = random.choice([True, False])
-        entry_conf = random.choice([True, False])
-        bias = random.choice(["Bullish", "Bearish"])
-        data.append({
-            "pair": pair,
-            "price": round(price, 2),
-            "rsi": rsi,
-            "sweep": sweep,
-            "bos": bos,
-            "entry_conf": entry_conf,
-            "bias": bias
-        })
+    for pair, symbol in PAIRS.items():
+        try:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period="1d", interval="15m")
+            if not df.empty:
+                latest = df.iloc[-1]
+                open_p, close_p, high, low = latest["Open"], latest["Close"], latest["High"], latest["Low"]
+                price = round(close_p, 5)
+
+                # Simulate SMC signals (replace with real logic later)
+                sweep = (high - close_p) / close_p > 0.002  # small wick logic
+                bos = abs(close_p - open_p) / open_p > 0.001
+                entry_conf = (close_p > open_p)
+                bias = "Bullish" if close_p > open_p else "Bearish"
+
+                data.append({
+                    "pair": pair,
+                    "price": price,
+                    "open": open_p,
+                    "close": close_p,
+                    "sweep": sweep,
+                    "bos": bos,
+                    "entry_conf": entry_conf,
+                    "bias": bias
+                })
+        except Exception as e:
+            print(f"⚠️ Error fetching {pair}: {e}")
     return pd.DataFrame(data)
 
 # ==============================
-# 🔹 HOPE Strategy Logic (Simulated)
+# 🔹 HOPE Setup Checker
 # ==============================
 def check_hope_setup(df):
     setups = []
     for _, row in df.iterrows():
         if row["sweep"] and row["bos"] and row["entry_conf"]:
-            if row["bias"] == "Bullish" and row["rsi"] < 40:
-                setups.append((row["pair"], "BUY 🟩", row["bias"], row["price"]))
-            elif row["bias"] == "Bearish" and row["rsi"] > 60:
-                setups.append((row["pair"], "SELL 🔻", row["bias"], row["price"]))
+            signal = "BUY 🟩" if row["bias"] == "Bullish" else "SELL 🔻"
+            setups.append((row["pair"], signal, row["bias"], row["price"]))
     return setups
 
 # ==============================
-# 🔹 Telegram Message Sender
+# 🔹 Telegram Sender
 # ==============================
 def send_telegram_message(message):
     try:
-        url = f"https://api.telegram.org/8376149890:AAFiw5rok3-NbT5SdxHGWcmn3Q7aEOzKKYs/sendMessage"
-        payload = {"chat_id":1609197089 , "text": message}
+        url = f"https://api.telegram.org/bot8376149890:AAFiw5rok3-NbT5SdxHGWcmn3Q7aEOzKKYs/sendMessage"
+        payload = {"chat_id": 1609197089, "text": message}
         requests.post(url, data=payload)
     except Exception as e:
-        print(f"Telegram send error: {e}")
+        print(f"Telegram error: {e}")
 
 # ==============================
-# 🔹 Bot Runner (Main Logic)
+# 🔹 Main Runner
 # ==============================
 def run_hope_smc():
-    print("🔍 Checking for A+ HOPE setups...\n")
-    df = simulate_market_data()
+    print("🔍 Checking live market data for A+ setups...\n")
+    df = get_live_data()
+    if df.empty:
+        print("⚠️ No data fetched. Skipping this cycle.\n")
+        return
+
     setups = check_hope_setup(df)
 
     if setups:
         for setup in setups:
             pair, signal, bias, price = setup
             msg = f"""
-🔥 HOPE A+ SETUP DETECTED 🔥
+🔥 HOPE A+ SETUP DETECTED (LIVE) 🔥
 Pair: {pair}
 Bias: {bias}
 Signal: {signal}
 Price: {price}
 RR: 1:3
 Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
-Session: Simulated
+Session: London/New York (Live Data)
 """
             print(msg)
             send_telegram_message(msg)
     else:
-        print("No A+ setups right now.\n")
+        print("No A+ setups at this moment.\n")
 
 # ==============================
-# 🔹 Background Auto Loop
+# 🔹 Auto Loop (Every 15 min)
 # ==============================
 def start_auto_loop():
-    print("🤖 HOPE SMC Bot started. Scanning every 15 minutes...\n")
+    print("🤖 HOPE SMC Bot started with LIVE market data.\n")
     while True:
         run_hope_smc()
-        print("⏱ Waiting 15 minutes before next scan...\n")
+        print("⏱ Waiting 15 minutes for next scan...\n")
         time.sleep(900)  # 15 minutes
 
 # ==============================
-# 🔹 Run Flask + Bot Thread Together
+# 🔹 Run Flask + Bot
 # ==============================
 if __name__ == '__main__':
     threading.Thread(target=start_auto_loop, daemon=True).start()
     app.run(host='0.0.0.0', port=10000)
-
