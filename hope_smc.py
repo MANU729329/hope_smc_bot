@@ -35,7 +35,7 @@ PAIRS = {
     "EURUSD": "EURUSD=X",
     "GBPJPY": "GBPJPY=X",
     "USDJPY": "USDJPY=X",
-    "XAUUSD": "GF=F",
+    "XAUUSD": "XAUUSD=X",  # ✅ Fixed ticker
     "GBPUSD": "GBPUSD=X"
 }
 
@@ -53,8 +53,8 @@ def get_live_data():
                 open_p, close_p, high, low = latest["Open"], latest["Close"], latest["High"], latest["Low"]
                 price = round(close_p, 5)
 
-                # Simulate SMC signals (replace with real logic later)
-                sweep = (high - close_p) / close_p > 0.002  # small wick logic
+                # Simulated HOPE strategy logic
+                sweep = (high - close_p) / close_p > 0.002
                 bos = abs(close_p - open_p) / open_p > 0.001
                 entry_conf = (close_p > open_p)
                 bias = "Bullish" if close_p > open_p else "Bearish"
@@ -130,6 +130,9 @@ Session: London/New York (Live Data)
 # ==============================
 def start_auto_loop():
     print("🤖 HOPE SMC Bot started with LIVE market data.\n")
+    # ✅ Send Telegram test alert at startup
+    send_telegram_message("✅ HOPE SMC Bot is LIVE — waiting for market open and A+ setups!")
+    
     while True:
         run_hope_smc()
         print("⏱ Waiting 15 minutes for next scan...\n")
